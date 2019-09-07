@@ -8,4 +8,9 @@ public interface GitRepoService {
 
     @GET("/search/repositories")
     Call<GitResponse> searchRepo(@Query("q") String query);
+
+    @GET("/search/repositories")
+    Call<GitResponse> searchRepo(@Query("q") String query,
+                                 @Query("page") int page,
+                                 @Query("page_limit") int limit);
 }

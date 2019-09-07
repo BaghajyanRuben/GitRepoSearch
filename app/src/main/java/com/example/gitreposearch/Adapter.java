@@ -17,16 +17,18 @@ public class Adapter extends RecyclerView.Adapter<Adapter.ViewHolder> {
 
     private List<GitRepo> items;
     private WeakReference<RepoClickListener> repoClickListenerWeakReference;
+    private WeakReference<LoadMoreCallback> loadMoreCallbackWeakReference;
 
-    public Adapter(RepoClickListener clickListener) {
+    public Adapter(RepoClickListener clickListener, LoadMoreCallback loadMoreCallback) {
         items = new ArrayList<>();
         repoClickListenerWeakReference = new WeakReference<>(clickListener);
+        loadMoreCallbackWeakReference = new WeakReference<>(loadMoreCallback);
     }
 
     public void addAll(List<GitRepo> data){
-        items.clear();
+        int startPosition = items.isEmpty() ? 0 : items.size() -1;
         items.addAll(data);
-        notifyDataSetChanged();
+        notifyItemRangeChanged(startPosition, data.size());
     }
 
     @NonNull
@@ -39,11 +41,20 @@ public class Adapter extends RecyclerView.Adapter<Adapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         holder.bind(items.get(position));
+        LoadMoreCallback loadMoreCallback = loadMoreCallbackWeakReference.get();
+        if (position == items.size() - 1 && loadMoreCallback != null){
+            loadMoreCallback.loadMore();
+        }
     }
 
     @Override
     public int getItemCount() {
         return items.size();
+    }
+
+    public void clear() {
+        items.clear();
+        notifyDataSetChanged();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">GitRepoSearch</string>
     <string name="search">Search</string>
+    <string name="empty_text">Search repos from git</string>
+    <string name="search_no_result">No Result</string>
+    <string name="error_text">Something went wrong</string>
+    <string name="load_more">Loading ...</string>
 </resources>

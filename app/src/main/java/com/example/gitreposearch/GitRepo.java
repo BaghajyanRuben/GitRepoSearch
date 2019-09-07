@@ -8,4 +8,5 @@ public class GitRepo {
 
     @SerializedName("full_name")
     String fullName;
+
 }
