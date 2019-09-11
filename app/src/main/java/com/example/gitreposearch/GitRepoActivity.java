@@ -1,11 +1,5 @@
 package com.example.gitreposearch;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.StaggeredGridLayoutManager;
-
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -14,24 +8,13 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.GsonBuilder;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
-import org.jetbrains.annotations.NotNull;
-
-import java.io.IOException;
 import java.util.List;
-
-import okhttp3.Interceptor;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Converter;
-
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.http.Header;
 
 public class GitRepoActivity extends AppCompatActivity
         implements RepoClickListener,
@@ -47,6 +30,7 @@ LoadMoreCallback{
     private Adapter adapter;
     private String query;
     private int page;
+    private GitRepoViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,12 +51,25 @@ LoadMoreCallback{
         bottomLoadingView = findViewById(R.id.load_more_view);
         errorText = findViewById(R.id.error_text);
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://api.github.com")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
+        viewModel = ViewModelProviders.of(this).get(GitRepoViewModel.class);
 
-        apiService = retrofit.create(GitRepoService.class);
+        viewModel.getRepsLiveData()
+                .observe(this,  new Observer<List<GitRepo>>() {
+            @Override
+            public void onChanged(List<GitRepo> gitRepos) {
+                Log.d("GitRepo", " onChanged " + (adapter.getItemCount()));
+                buttonView.setEnabled(true);
+
+                if (gitRepos.isEmpty()) {
+                    errorText.setVisibility(View.VISIBLE);
+                    errorText.setText(R.string.search_no_result);
+                } else {
+                    errorText.setVisibility(View.GONE);
+                }
+                loadingView.setVisibility(View.GONE);
+                adapter.addAll(gitRepos);
+            }
+        });
 
         buttonView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -91,6 +88,12 @@ LoadMoreCallback{
 
         });
 
+        Log.d("GitRepo", "OnCreate " + adapter.getItemCount());
+
+        if(adapter.getItemCount() == 0) {
+            search("a");
+        }
+
     }
 
     private void search(String query) {
@@ -100,37 +103,8 @@ LoadMoreCallback{
         errorText.setVisibility(View.GONE);
         adapter.clear();
         buttonView.setEnabled(false);
-        apiService.searchRepo(query, 1, 100).enqueue(new Callback<GitResponse>() {
-            @Override
-            public void onResponse(@NotNull Call<GitResponse> call,
-                                   @NotNull Response<GitResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    Log.d("GitRepo", "successfilly -> total count = " + response.body().totalCount);
-                    List<GitRepo> repos = response.body().repos;
-                    if (repos.isEmpty()){
-                        errorText.setVisibility(View.VISIBLE);
-                        errorText.setText(R.string.search_no_result);
-                    } else {
-                        adapter.addAll(repos);
+        viewModel.loadData(query);
 
-                        Log.d("GitRepo", "successfilly -> item count = " + repos.size());
-
-                        errorText.setVisibility(View.GONE);
-                    }
-                }
-                loadingView.setVisibility(View.GONE);
-                buttonView.setEnabled(true);
-            }
-
-            @Override
-            public void onFailure(Call<GitResponse> call, Throwable t) {
-                loadingView.setVisibility(View.GONE);
-                errorText.setVisibility(View.VISIBLE);
-                errorText.setText(R.string.error_text);
-                buttonView.setEnabled(true);
-
-            }
-        });
     }
 
     @Override
@@ -141,27 +115,19 @@ LoadMoreCallback{
     @Override
     public void loadMore() {
         bottomLoadingView.setVisibility(View.VISIBLE);
-        apiService.searchRepo(query, 2, 100).enqueue(new Callback<GitResponse>() {
-            @Override
-            public void onResponse(@NotNull Call<GitResponse> call,
-                                   @NotNull Response<GitResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    Log.d("GitRepo", "successfilly -> total count = " + response.body().totalCount);
-                    List<GitRepo> repos = response.body().repos;
-                    if (!repos.isEmpty()){
-                        adapter.addAll(repos);
-                        Log.d("GitRepo", "successfilly -> item count = " + repos.size());
-                    }
-                }
-                bottomLoadingView.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onFailure(Call<GitResponse> call, Throwable t) {
-                bottomLoadingView.setVisibility(View.GONE);
-            }
-        });
     }
 
 
+    @Override
+    protected void onDestroy() {
+        Log.d("GitRepo", "onDestroy");
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Log.d("GitRepo", "onRestart");
+
+    }
 }
